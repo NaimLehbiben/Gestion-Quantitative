@@ -1,0 +1,13 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it using the following DOI.
+title: Replicating research paper "Catching the curl: Wavelet thresholding improves forward curve modelling"
+authors:
+  - name: LEHBIBEN NAIM
+    email: naim.lehbiben@dauphine.eu
+  - name: JOUDY BENKADDOUR
+    email: joudy.benkaddour@dauphine.eu*
+  - name: CYPRIEN TARDIVEL
+    email: cyprien.tardivel@dauphine.eu
+  - name: XIYU XUE
+    email: xiyu.xue@dauphine.eu
+license: MIT

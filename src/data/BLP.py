@@ -86,6 +86,7 @@ class BLP():
             if prices_dropNaN:
                 panel_data.loc[each_date, :] = prices_dropNaN
 
+
         return panel_data
 
 

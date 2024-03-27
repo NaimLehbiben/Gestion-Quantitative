@@ -5,15 +5,15 @@ from statsmodels.tsa.stattools import adfuller
 
 def calculate_statistics(serie, prefix=''):
     return {
-        f'{prefix}Mean': np.mean(serie),
-        f'{prefix}Median': np.median(serie),
-        f'{prefix}Minimum': np.min(serie),
-        f'{prefix}Maximum': np.max(serie),
-        f'{prefix}Std deviation': np.std(serie, ddof=1),
-        f'{prefix}Skewness': skew(serie),
-        f'{prefix}Kurtosis': kurtosis(serie),
-        f'{prefix}Autocorrelation': pd.Series(serie).autocorr(),
-        f'{prefix}ADF test p-value (10 lags)': adfuller(serie, maxlag=10)[1],
+        f'{prefix}Mean': round(np.mean(serie), 4),
+        f'{prefix}Median': round(np.median(serie), 4),
+        f'{prefix}Minimum': round(np.min(serie), 3),
+        f'{prefix}Maximum': round(np.max(serie), 3),
+        f'{prefix}Std deviation': round(np.std(serie, ddof=1), 4),
+        f'{prefix}Skewness': round(skew(serie), 2),
+        f'{prefix}Kurtosis': round(kurtosis(serie), 2),
+        f'{prefix}Autocorrelation': round(pd.Series(serie).autocorr(), 3),
+        f'{prefix}ADF test p-value (10 lags)': round(adfuller(serie, maxlag=10)[1], 2),
         f'{prefix}Nb obs': len(serie)
     }
 
@@ -28,4 +28,3 @@ def descriptive_statistics(serie):
     log_stats = calculate_statistics(log_returns, 'Log ')
 
     return original_stats, log_stats
-

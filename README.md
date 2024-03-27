@@ -1,4 +1,4 @@
-# Gestion-Quantitative
+# Quantitative Portfolio Management
 
 ## Objectives
 

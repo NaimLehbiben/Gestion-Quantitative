@@ -14,4 +14,5 @@ All the code is in the src folder. The research paper is in the static folder.
 
 [MIT](https://choosealicense.com/licenses/mit/)
 
+## Authors
 Authors  : **Naïm Lehbiben - Jouddy Benkaddour -  Cyprien Tardivel - Xiyu Xue**

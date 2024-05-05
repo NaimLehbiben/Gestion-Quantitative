@@ -25,6 +25,7 @@ def get_state_intercept(num_factors, mu, sigma):
         a = np.array([mu - 0.5*sigma**2])
     else:
         a = np.zeros(num_factors)
+        a = np.transpose(a)
         a[0] = mu - 0.5*sigma**2
     return a
 
@@ -37,6 +38,9 @@ def get_measurement_matrix(num_factors, T, t, K2, K3, K4):
         if num_factors > 2:
             for i in range(1, 5):
                 C[i, 2] = np.exp(-K3*(T[i]-t))
+        if num_factors > 3:
+                for i in range(1, 5):
+                    C[i, 3] = np.exp(-K4*(T[i]-t))            
     return C
 
 def get_process_noise_covariance(num_factors, kappa2, kappa3, kappa4, rho12, rho13, rho23, rho14, K2, K3, K4, sigma1, sigma2, sigma3, sigma4):

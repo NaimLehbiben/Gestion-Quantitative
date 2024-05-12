@@ -1,11 +1,11 @@
 DELTA = 1/250
 
-# Sorensen et al. (2002) parameters estimates
+# Sorensen (2002) parameters estimates
 
-mu1 = 0.0416
-k1 = 0.7744
-sigma = 0.1585
-v = 0.2201
+mu = 0.0416
+kappa = 0.7744
+sigma1 = 0.1585
+sigma2 = 0.2201
 rho = -0.3116
 alpha = -0.0386
 lambdaz= -0.1011

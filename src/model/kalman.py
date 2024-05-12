@@ -12,8 +12,8 @@ def s_func(t):
     Returns:
     float: La valeur calculée de la fonction saisonnière à l'instant t.
     """
-    return -0.0228 * np.cos(2 * np.pi * t) + 0.0029 * np.cos(2 * np.pi * 2 * t) + \
-           0.0081 * np.sin(2 * np.pi * t) + 0.0054 * np.sin(2 * np.pi * 2 * t)
+    return -0.0088 * np.cos(2 * np.pi * t) + 0.0035 * np.cos(2 * np.pi * 2 * t) + \
+           0.0344 * np.sin(2 * np.pi * t) -0.0098 * np.sin(2 * np.pi * 2 * t)
 
 class KalmanModel:
     """
@@ -50,6 +50,7 @@ class KalmanModel:
         np.ndarray: La matrice de transition d'état.
         """
         A = np.eye(self.n_factors)
+        A[0, 0] = 1
         for i in range(1, self.n_factors):
             kappa = self.params.get(f'kappa{i+1}', 0)
             A[i, i] = np.exp(-kappa * DELTA)
@@ -85,54 +86,51 @@ class KalmanModel:
         return C
 
     def get_process_noise_covariance(self):
-        """
-        Génère la matrice de covariance du bruit de processus.
+        n_factors = self.n_factors
+        params = self.params
 
-        Returns:
-        np.ndarray: La matrice de covariance du bruit de processus.
-        """
-        Q = np.zeros((self.n_factors, self.n_factors))
-        for i in range(self.n_factors):
-            sigma_i = self.params.get(f'sigma{i+1}', 0)
-            kappa_i = self.params.get(f'kappa{i+1}', 0)
-            if kappa_i == 0:
-                Q[i, i] = sigma_i**2 * DELTA  
+        Q = np.zeros((n_factors, n_factors))
+        
+        for i in range(n_factors):
+            sigma_i = params.get(f'sigma{i+1}', 0)
+            
+            if i == 0:
+                Q[i, i] = sigma_i**2 * DELTA
             else:
+                kappa_i = params.get(f'kappa{i+1}', 0)
+                if kappa_i == 0:
+                    raise ValueError(f"kappa for factor {i+1} cannot be zero for mean-reverting processes.")
                 Q[i, i] = sigma_i**2 * (1 - np.exp(-2 * kappa_i * DELTA)) / (2 * kappa_i)
-            for j in range(i + 1, self.n_factors):
-                sigma_j = self.params.get(f'sigma{j+1}', 0)
-                kappa_j = self.params.get(f'kappa{j+1}', 0)
-                rho_ij = self.params.get(f'rho{i+1}{j+1}', 0)
+            
+            for j in range(i + 1, n_factors):
+                sigma_j = params.get(f'sigma{j+1}', 0)
+                kappa_j = params.get(f'kappa{j+1}', 0) if j > 0 else 0  
+                
                 if kappa_i + kappa_j == 0:
-                    term = 0  
+                    continue  #
+                
+                rho_ij = params.get(f'rho{i+1}{j+1}', 0)
+                if kappa_i == 0 or kappa_j == 0:
+                    effective_kappa = kappa_j if kappa_i == 0 else kappa_i
+                    term = (rho_ij * sigma_i * sigma_j * (1 - np.exp(-effective_kappa * DELTA))) / effective_kappa
                 else:
-                    term = (rho_ij * sigma_i * sigma_j * (1 - np.exp(- (kappa_i + kappa_j) * DELTA))) / (kappa_i + kappa_j)
+                    term = (rho_ij * sigma_i * sigma_j * (1 - np.exp(-(kappa_i + kappa_j) * DELTA))) / (kappa_i + kappa_j)
                 Q[i, j] = Q[j, i] = term
+
         return Q
 
+
+
     def compute_likelihood(self, observations, times, maturities):
-        """
-        Calcule la vraisemblance des observations données en utilisant le filtre de Kalman.
+            total_log_likelihood = 0.0
+            for i, z in enumerate(observations):
+                t = times[i]
+                s_t = s_func(t)
+                c_t = np.array([s_t + (self.params['mu'] + self.params['lambda1'] - 0.5 * self.params['sigma1'] ** 2) * m for m in maturities[i]])
+                c_t = c_t.reshape(-1, 1)
+                z = z.reshape(-1, 1)
+                self.kf.predict(u=np.array([self.a]))
+                self.kf.update(z - c_t)
+                total_log_likelihood += self.kf.log_likelihood  
 
-        Args:
-        observations (np.ndarray): Les observations.
-        times (np.ndarray): Les instants des observations.
-        maturities (np.ndarray): Les maturités correspondantes.
-
-        Returns:
-        float: La vraisemblance négative des observations.
-        """
-        l1 = l2 = 0.0
-        for i, z in enumerate(observations):
-            t = times[i]
-            s_t = s_func(t)
-            c_t = np.array([s_t + (self.params['mu'] - self.params['lambda1'] + 0.5 * self.params['sigma1'] ** 2) * m for m in maturities[i]])
-            c_t = c_t.reshape(-1, 1)  
-            z = z.reshape(-1, 1)
-            self.kf.predict(u=np.array([self.a]))
-            self.kf.update(z - c_t)
-            l1 += np.log(np.linalg.det(self.kf.S))
-            l2 += (self.kf.y.T @ np.linalg.inv(self.kf.S) @ self.kf.y)
-        n_timesteps = len(observations)
-        likelihood = -0.5 * n_timesteps * np.log(2 * np.pi) - 0.5 * l1 - 0.5 * l2
-        return -likelihood
+            return -total_log_likelihood

@@ -11,6 +11,7 @@ alpha = -0.0386
 lambdaz= -0.1011
 x1 = 4.8738
 sigma_e = 0.0171
+
 gamma1 = -0.0228
 gamma_star_1 = 0.0081
 gamma_2 = 0.0029

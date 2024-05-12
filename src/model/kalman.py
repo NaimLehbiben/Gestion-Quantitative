@@ -86,6 +86,12 @@ class KalmanModel:
         return C
 
     def get_process_noise_covariance(self):
+        """
+        Generates the process noise covariance matrix for the Kalman Filter.
+
+        Returns:
+            np.ndarray: Process noise covariance matrix.
+        """
         n_factors = self.n_factors
         params = self.params
 
@@ -93,21 +99,21 @@ class KalmanModel:
         
         for i in range(n_factors):
             sigma_i = params.get(f'sigma{i+1}', 0)
-            
+            kappa_i = params.get(f'kappa{i+1}', 0)  # Ensure kappa_i is always initialized before use
+
             if i == 0:
-                Q[i, i] = sigma_i**2 * DELTA
+                Q[i, i] = sigma_i**2 * DELTA  # Assuming sigma_i for factor 1 also applies to DELTA scaling
             else:
-                kappa_i = params.get(f'kappa{i+1}', 0)
                 if kappa_i == 0:
                     raise ValueError(f"kappa for factor {i+1} cannot be zero for mean-reverting processes.")
                 Q[i, i] = sigma_i**2 * (1 - np.exp(-2 * kappa_i * DELTA)) / (2 * kappa_i)
             
             for j in range(i + 1, n_factors):
                 sigma_j = params.get(f'sigma{j+1}', 0)
-                kappa_j = params.get(f'kappa{j+1}', 0) if j > 0 else 0  
+                kappa_j = params.get(f'kappa{j+1}', 0)  # Ensure kappa_j is initialized
                 
                 if kappa_i + kappa_j == 0:
-                    continue  #
+                    continue  # Avoid calculation when sum of kappas is zero
                 
                 rho_ij = params.get(f'rho{i+1}{j+1}', 0)
                 if kappa_i == 0 or kappa_j == 0:
@@ -126,7 +132,7 @@ class KalmanModel:
             for i, z in enumerate(observations):
                 t = times[i]
                 s_t = s_func(t)
-                c_t = np.array([s_t + (self.params['mu'] + self.params['lambda1'] - 0.5 * self.params['sigma1'] ** 2) * m for m in maturities[i]])
+                c_t = np.array([s_t + (self.params['mu'] - self.params['lambda1'] + 0.5 * self.params['sigma1'] ** 2) * m for m in maturities[i]])
                 c_t = c_t.reshape(-1, 1)
                 z = z.reshape(-1, 1)
                 self.kf.predict(u=np.array([self.a]))

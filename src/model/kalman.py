@@ -107,7 +107,8 @@ class KalmanModel:
             raise ValueError(f"Maturities should have 5 columns, but got shape {T.shape}")
 
         C = np.zeros((5, self.n_factors))
-        C[:, 0] = 1  
+        C[:, 0] = 1
+
 
         for i in range(1, self.n_factors):
             kappa = self.params.get(f'kappa{i+1}', 0)
@@ -204,8 +205,7 @@ class KalmanModel:
 
         for i in range(1, len(maturities)):
             lambda_i = self.params.get(f'lambda{i}', 0)
-            sigma_i = self.params.get(f'sigma{i+1}', 0)
-            term = s_t + (mu + lambda_i - 0.5 * sigma_i**2) * maturities[i]
+            term = s_t + (mu + lambda_i - 0.5 * sigma1**2) * maturities[i]
             terms.append(term)
 
         c_t = np.array(terms).reshape(-1, 1)

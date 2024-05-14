@@ -1,6 +1,6 @@
 import numpy as np
 from filterpy.kalman import KalmanFilter
-from src.utility.constant import DELTA
+from src.utility.parameter import DELTA
 
 
 def s_func(t):
@@ -113,7 +113,7 @@ class KalmanModel:
         for i in range(1, self.n_factors):
             kappa = self.params.get(f'kappa{i+1}', 0)
 
-            #
+            
             if not isinstance(kappa, (int, float)):
                 raise ValueError(f"kappa{i+1} must be a number, but got {type(kappa)}")
 
@@ -172,7 +172,7 @@ class KalmanModel:
                 if not isinstance(rho_ij, (int, float)):
                     raise ValueError(f"rho{i+1}{j+1} must be a number, but got {type(rho_ij)}")
 
-                rho_ij = max(min(rho_ij, 0.999), -0.999)
+                rho_ij = max(min(rho_ij, 0.99), -0.99)
 
                 if kappa_i == 0 or kappa_j == 0:
                     effective_kappa = kappa_j if kappa_i == 0 else kappa_i
@@ -199,21 +199,23 @@ class KalmanModel:
         ValueError: If the resulting c_t does not have the shape (5, 1).
         """
         mu = self.params.get('mu', 0)
-        sigma1 = self.params.get('sigma1', 0)
 
-        terms = [s_t + (mu - 0.5 * sigma1**2) * maturities[0]]
-
-        for i in range(1, len(maturities)):
-            lambda_i = self.params.get(f'lambda{i}', 0)
-            term = s_t + (mu + lambda_i - 0.5 * sigma1**2) * maturities[i]
+        terms = []
+        for i in range(len(maturities)):
+            
+            factor_index = i % 4 + 1
+            lambda_i = self.params.get(f'lambda{factor_index}', 0)
+            sigma_i = self.params.get(f'sigma{factor_index}', 0)
+            term = s_t + (mu + lambda_i - 0.5 * sigma_i**2) * maturities[i]
             terms.append(term)
 
         c_t = np.array(terms).reshape(-1, 1)
 
         if c_t.shape != (5, 1):
-            raise ValueError(f"Each observation should have shape (5, 1), but got shape {c_t.shape}")
+            raise ValueError(f"Each intercept should have shape (5, 1), but got shape {c_t.shape}")
         
         return c_t
+
 
 
     def compute_likelihood(self, observations, times, maturities, exclude_first_n=0.01):

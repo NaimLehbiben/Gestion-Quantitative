@@ -1,3 +1,12 @@
+
+
+def calculate_num_parameters(n_factors):
+    """Calculate the number of parameters based on the number of factors."""
+    return int(0.5 * n_factors**2 + 2.5 * n_factors)
+
+
+## Constant
+
 DELTA = 1/250
 
 # Sorensen (2002) parameters estimates

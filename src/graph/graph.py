@@ -22,15 +22,13 @@ def plot_and_save_graph(df, column_names, title, xlabel, ylabel, output_filename
     plt.ylabel(ylabel)
     plt.legend()
     plt.grid()
-    
-    # Créer le répertoire de sortie s'il n'existe pas
+
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    # Enregistrer le graphique
+
     output_path = os.path.join(output_dir, output_filename)
     plt.savefig(output_path)
     
-    # Afficher le graphique
     plt.show()
     print(f"Graph saved to {output_path}")

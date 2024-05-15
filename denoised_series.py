@@ -13,7 +13,7 @@ def denoise_signal(signal, wavelet='db1',level =1):
         return np.mean(np.absolute(d - np.mean(d, axis)), axis)
 
     # Calculer le seuil universel
-    sigma = madev(coeffs[-level])/ 0.6745
+    sigma = madev(coeffs[level])/ 0.6745
     #sigma = np.median(np.abs(coeffs[-level])) / 0.6745
     threshold = sigma * np.sqrt(2 * np.log(len(signal)))
     
@@ -24,7 +24,6 @@ def denoise_signal(signal, wavelet='db1',level =1):
     denoised_signal = pywt.waverec(coeffs_thresholded, wavelet)
 
     return denoised_signal
-
 
 def denoise_all_signal(df_price, wavelet='db1',level =1):
     return_df = df_price.pct_change(1).fillna(0)
@@ -42,28 +41,29 @@ def denoise_all_signal(df_price, wavelet='db1',level =1):
     # Utiliser les prix initiaux réels
     initial_prices = df_price.iloc[0]
     # Calculer les prix en une seule ligne en utilisant les prix initiaux de la première journée
-    denoised_price_df = pd.DataFrame({asset: initial_prices[asset] * (1 + denoised_return_df[asset]).cumprod() for asset in denoised_return_df.columns})
+    denoised_price_df = pd.DataFrame({asset: initial_prices[asset] * (1 + denoised_return_df[asset]).cumprod() for asset in denoised_return_df.columns} , columns= denoised_return_df.columns )
 
     return denoised_return_df, denoised_price_df
 
-def plot_comparison(initial_df, denoised_df):
 
+def plot_comparaison(initial_df, denoised_df):
     # Déterminer le nombre de colonnes pour configurer les subplots
     num_columns = len(initial_df.columns)
     plt.figure(figsize=(15, 5 * num_columns))  # Ajuster la taille du graphique en fonction du nombre de colonnes
 
-    for i, column in enumerate(initial_df.columns, 1):
-        # Tracer la série originale
-        plt.subplot(num_columns, 2, 2*i-1)
-        plt.plot(initial_df.index, initial_df[column], label="Original", color='blue')
-        plt.title(f"Original {column}")
-        plt.legend()
-
-        # Tracer la série débruitée
-        plt.subplot(num_columns, 2, 2*i)
-        plt.plot(denoised_df.index, denoised_df[column], label="Denoised", color='green')
-        plt.title(f"Denoised {column}")
+    for i, column in enumerate(initial_df.columns, start=1):
+        # Créer un subplot pour chaque colonne
+        plt.subplot(num_columns, 1, i)  # Créer les subplots verticalement
+        
+        # Tracer la série originale et la série débruitée sur le même subplot
+        plt.plot(initial_df.index, initial_df[column], label='Original', color='blue')
+        plt.plot(denoised_df.index, denoised_df[column], label='Denoised', color='green')
+        
+        # Configurer le titre et la légende
+        plt.title(f'Comparison of Original and Denoised for {column}')
         plt.legend()
 
     plt.tight_layout()  # Ajuster automatiquement le layout
     plt.show()
+
+

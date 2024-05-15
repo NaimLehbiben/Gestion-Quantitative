@@ -2,8 +2,8 @@ from datetime import datetime, timedelta
 from calendar import monthrange
 
 def get_t(date):
-    bgn_of_year = datetime(date.year, 1, 1)  
-    delta = date - bgn_of_year
+    bgn_of_df = datetime(1988, 2, 1)  
+    delta = date - bgn_of_df
     return delta.days / 365.0
 
 def get_T(date):

@@ -1,6 +1,6 @@
 def calculate_num_parameters(n_factors):
-    """Calculate the number of parameters based on the number of factors."""
-    return int(0.5 * n_factors**2 + 2.5 * n_factors)
+    """Calculate the number of parameters based on the number of factors, including initial state for non-stationary variable."""
+    return int(0.5 * n_factors**2 + 2.5 * n_factors )
 
 ## Constant
 

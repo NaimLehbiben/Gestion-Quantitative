@@ -3,27 +3,45 @@ from filterpy.kalman import KalmanFilter
 from src.utility.parameter import DELTA
 
 def s_func(t):
+    """
+    Seasonal function to model periodic effects in the data.
+
+    Parameters:
+    t (float): Time parameter.
+
+    Returns:
+    float: The computed seasonal component.
+    """
     return -0.0088 * np.cos(2 * np.pi * t) + 0.0035 * np.cos(2 * np.pi * 2 * t) + \
            0.0344 * np.sin(2 * np.pi * t) - 0.0098 * np.sin(2 * np.pi * 2 * t)
 
 class KalmanModel:
-
     def __init__(self, n_factors, params):
+        """
+        Initialize the KalmanModel with the given number of factors and parameters.
+
+        Parameters:
+        n_factors (int): Number of factors in the model.
+        params (dict): Dictionary containing the model parameters.
+        """
         self.kf = KalmanFilter(dim_x=n_factors, dim_z=5)
         self.n_factors = n_factors
         self.params = params
         self.configure_matrices()
 
     def configure_matrices(self):
+        """
+        Configure the matrices for the Kalman Filter.
+        """
         self.kf.F = self.get_state_transition_matrix()
         self.kf.H = self.get_measurement_matrix()
         self.a = self.get_state_intercept()
         self.kf.x = np.zeros((self.n_factors, 1))
-        
+
         self.kf.P = np.eye(self.n_factors)
-        self.kf.P[0, 0] = 1e4  # Grand valeur pour la variable non stationnaire
+        self.kf.P[0, 0] = 1e4  # Large value for the non-stationary variable
         for i in range(1, self.n_factors):
-            self.kf.P[i, i] = 1.0  # Valeur en état stationnaire pour les variables stationnaires
+            self.kf.P[i, i] = 1.0  # Value for the stationary variables
 
         self.kf.Q = self.get_process_noise_covariance()
         self.kf.R = np.eye(5) * 0.01
@@ -36,7 +54,6 @@ class KalmanModel:
         np.ndarray: The state transition matrix.
         """
         A = np.eye(self.n_factors)
-        
         
         if A.shape != (self.n_factors, self.n_factors):
             raise ValueError(f"A should have shape ({self.n_factors}, {self.n_factors}), but got shape {A.shape}")
@@ -52,7 +69,6 @@ class KalmanModel:
 
         return A
 
-
     def get_state_intercept(self):
         """
         Generates the state intercept vector for the initial state.
@@ -63,7 +79,6 @@ class KalmanModel:
         mu = self.params.get('mu')
         sigma1 = self.params.get('sigma1')
 
-        
         if not isinstance(mu, (int, float)):
             raise ValueError(f"mu must be a number, but got {type(mu)}")
         if not isinstance(sigma1, (int, float)):
@@ -72,7 +87,6 @@ class KalmanModel:
         a = np.zeros((self.n_factors, 1))
         a[0, 0] = mu - 0.5 * sigma1**2
 
-        
         if a.shape != (self.n_factors, 1):
             raise ValueError(f"a should have shape ({self.n_factors}, 1), but got shape {a.shape}")
 
@@ -87,18 +101,15 @@ class KalmanModel:
         """
         T = self.params['maturities']
         
-        
         if T.shape[1] != 5:
             raise ValueError(f"Maturities should have 5 columns, but got shape {T.shape}")
 
         C = np.zeros((5, self.n_factors))
         C[:, 0] = 1
 
-
         for i in range(1, self.n_factors):
             kappa = self.params.get(f'kappa{i+1}', 0)
 
-            
             if not isinstance(kappa, (int, float)):
                 raise ValueError(f"kappa{i+1} must be a number, but got {type(kappa)}")
 
@@ -108,13 +119,12 @@ class KalmanModel:
 
         return C
 
-
     def get_process_noise_covariance(self):
         """
         Generates the process noise covariance matrix for the Kalman Filter, with correlation limited to 95%.
 
         Returns:
-            np.ndarray: Process noise covariance matrix.
+        np.ndarray: Process noise covariance matrix.
         """
         n_factors = self.n_factors
         params = self.params
@@ -124,7 +134,6 @@ class KalmanModel:
         for i in range(n_factors):
             sigma_i = params.get(f'sigma{i+1}', 0)
             kappa_i = params.get(f'kappa{i+1}', 0)
-            
             
             if not isinstance(sigma_i, (int, float)):
                 raise ValueError(f"sigma{i+1} must be a number, but got {type(sigma_i)}")
@@ -142,7 +151,6 @@ class KalmanModel:
                 sigma_j = params.get(f'sigma{j+1}', 0)
                 kappa_j = params.get(f'kappa{j+1}', 0)
                 
-                
                 if not isinstance(sigma_j, (int, float)):
                     raise ValueError(f"sigma{j+1} must be a number, but got {type(sigma_j)}")
                 if not isinstance(kappa_j, (int, float)):
@@ -153,10 +161,8 @@ class KalmanModel:
 
                 rho_ij = params.get(f'rho{i+1}{j+1}', 0)
 
-                
                 if not isinstance(rho_ij, (int, float)):
                     raise ValueError(f"rho{i+1}{j+1} must be a number, but got {type(rho_ij)}")
-
 
                 if kappa_i == 0 or kappa_j == 0:
                     effective_kappa = kappa_j if kappa_i == 0 else kappa_i
@@ -167,7 +173,6 @@ class KalmanModel:
 
         return Q
 
-    
     def compute_ct(self, s_t, maturities):
         """
         Computes the state intercept term c_t based on the seasonal component and maturities.
@@ -183,17 +188,13 @@ class KalmanModel:
         ValueError: If the resulting c_t does not have the shape (5, 1).
         """
         mu = self.params.get('mu', 0)
-        lambda1 = self.params.get('lambda1', 0)
-        sigma1 = self.params.get('sigma1', 0)
 
         terms = []
         for i in range(len(maturities)):
-            
             factor_index = i % 4 + 1
             lambda_i = self.params.get(f'lambda{factor_index}', 0)
             sigma_i = self.params.get(f'sigma{factor_index}', 0)
             term = s_t + (mu + lambda_i - 0.5 * sigma_i**2) * maturities[i]
-            
             terms.append(term)
 
         c_t = np.array(terms).reshape(-1, 1)
@@ -202,8 +203,6 @@ class KalmanModel:
             raise ValueError(f"Each intercept should have shape (5, 1), but got shape {c_t.shape}")
         
         return c_t
-
-
 
     def compute_likelihood(self, observations, times, maturities, exclude_first_n=0.00):
         """
@@ -233,7 +232,7 @@ class KalmanModel:
             c_t = self.compute_ct(s_t, maturities[i])
             z = observations[i].reshape(-1, 1)
             self.kf.predict(u=np.array([self.a]))
-            self.kf.update(z- c_t)
+            self.kf.update(z - c_t)
             total_log_likelihood += self.kf.log_likelihood
 
         return -total_log_likelihood

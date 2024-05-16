@@ -183,6 +183,8 @@ class KalmanModel:
         ValueError: If the resulting c_t does not have the shape (5, 1).
         """
         mu = self.params.get('mu', 0)
+        lambda1 = self.params.get('lambda1', 0)
+        sigma1 = self.params.get('sigma1', 0)
 
         terms = []
         for i in range(len(maturities)):
@@ -191,6 +193,7 @@ class KalmanModel:
             lambda_i = self.params.get(f'lambda{factor_index}', 0)
             sigma_i = self.params.get(f'sigma{factor_index}', 0)
             term = s_t + (mu + lambda_i - 0.5 * sigma_i**2) * maturities[i]
+            
             terms.append(term)
 
         c_t = np.array(terms).reshape(-1, 1)
@@ -202,7 +205,7 @@ class KalmanModel:
 
 
 
-    def compute_likelihood(self, observations, times, maturities, exclude_first_n=0.01):
+    def compute_likelihood(self, observations, times, maturities, exclude_first_n=0.00):
         """
         Computes the negative log-likelihood of the observations given the model parameters.
 

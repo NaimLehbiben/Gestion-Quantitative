@@ -13,7 +13,7 @@ def denoise_signal(signal, wavelet='db1',level =1):
         return np.mean(np.absolute(d - np.mean(d, axis)), axis)
 
     # Calculer le seuil universel
-    sigma = madev(coeffs[level])/ 0.6745
+    sigma = madev(coeffs[-level])/ 0.6745
     #sigma = np.median(np.abs(coeffs[-level])) / 0.6745
     threshold = sigma * np.sqrt(2 * np.log(len(signal)))
     
@@ -26,24 +26,18 @@ def denoise_signal(signal, wavelet='db1',level =1):
     return denoised_signal
 
 def denoise_all_signal(df_price, wavelet='db1',level =1):
-    return_df = df_price.pct_change(1).fillna(0)
 
     # Appliquer la fonction de débruitage
-    denoised_series = {}
-    for column in return_df.columns:
-        signal = return_df[column].values
+    denoised_price = {}
+    for column in df_price.columns:
+        signal = df_price[column].values
         denoised_signal = denoise_signal(signal, wavelet=wavelet,level = level)  # Ajuster le niveau si nécessaire
-        denoised_series[column] = denoised_signal[:len(return_df)]  # Ajuster à la longueur originale si nécessaire
+        denoised_price[column] = denoised_signal[:len(df_price)]  # Ajuster à la longueur originale si nécessaire
 
     # Creating a dataframe for the denoised series
-    denoised_return_df = pd.DataFrame(denoised_series, index=return_df.index)
+    denoised_price_df = pd.DataFrame(denoised_price, index=df_price.index)
 
-    # Utiliser les prix initiaux réels
-    initial_prices = df_price.iloc[0]
-    # Calculer les prix en une seule ligne en utilisant les prix initiaux de la première journée
-    denoised_price_df = pd.DataFrame({asset: initial_prices[asset] * (1 + denoised_return_df[asset]).cumprod() for asset in denoised_return_df.columns} , columns= denoised_return_df.columns )
-
-    return denoised_return_df, denoised_price_df
+    return denoised_price_df
 
 
 def plot_comparaison(initial_df, denoised_df):

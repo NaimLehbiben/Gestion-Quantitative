@@ -1,3 +1,4 @@
+
 def calculate_num_parameters(n_factors):
     """Calculate the number of parameters based on the number of factors, including initial state for non-stationary variable."""
     return int(0.5 * n_factors**2 + 2.5 * n_factors )
@@ -18,8 +19,9 @@ lambdaz= -0.1011
 x1 = 4.8738
 sigma_e = 0.0171
 
-gamma1 = -0.0228
-gamma_star_1 = 0.0081
-gamma_2 = 0.0029
-gamma_star_2 = 0.0054
-
+initial_guesses = {
+    1: [x1, mu, sigma1, lambdaz],
+    2: [x1, mu, sigma1, lambdaz, kappa, sigma2, lambdaz, rho],
+    3: [x1, mu, sigma1, lambdaz, kappa, sigma2, lambdaz, rho, kappa, sigma2, lambdaz, rho, rho],
+    4: [x1, mu, sigma1, lambdaz, kappa, sigma2, lambdaz, rho, kappa, sigma2, lambdaz, rho, rho, kappa, sigma2, lambdaz, rho, rho, rho]
+}

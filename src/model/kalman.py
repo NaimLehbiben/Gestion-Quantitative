@@ -46,9 +46,9 @@ class KalmanModel:
         self.kf.x = np.zeros((self.n_factors, 1))
 
         self.kf.P = np.eye(self.n_factors)
-        #self.kf.P[0, 0] = 1e4  # Large value for the non-stationary variable
-        #for i in range(1, self.n_factors):
-            #self.kf.P[i, i] = 1.0  # Value for the stationary variables
+        self.kf.P[0, 0] = 1e4  # Large value for the non-stationary variable
+        for i in range(1, self.n_factors):
+            self.kf.P[i, i] = 1.0  # Value for the stationary variables
         self.kf.Q = self.get_process_noise_covariance()
         self.kf.R = np.eye(5) * 0.01
 
@@ -194,13 +194,14 @@ class KalmanModel:
         ValueError: If the resulting c_t does not have the shape (5, 1).
         """
         mu = self.params.get('mu', 0)
+        sigma1 = self.params.get('sigma1', 0)
 
         terms = []
         for i in range(len(maturities)):
             factor_index = i % 4 + 1
             lambda_i = self.params.get(f'lambda{factor_index}', 0)
-            sigma_i = self.params.get(f'sigma{factor_index}', 0)
-            term = s_t + (mu + lambda_i - 0.5 * sigma_i**2) * maturities[i]
+            #sigma_i = self.params.get(f'sigma{factor_index}', 0)
+            term = s_t + (mu + lambda_i - 0.5 * sigma1**2) * maturities[i]
             terms.append(term)
 
         c_t = np.array(terms).reshape(-1, 1)

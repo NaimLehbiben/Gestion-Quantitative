@@ -130,14 +130,14 @@ class KalmanModel:
         params = self.params
 
         Q = np.zeros((n_factors, n_factors))
-
+        
         for i in range(n_factors):
             sigma_i = params.get(f'sigma{i+1}', 0)
-            kappa_i = 0 if i == 0 else params.get(f'kappa{i+1}', 0)  # Force kappa1 to be 0
-
+            kappa_i = params.get(f'kappa{i+1}', 0)
+            
             if not isinstance(sigma_i, (int, float)):
                 raise ValueError(f"sigma{i+1} must be a number, but got {type(sigma_i)}")
-            if i != 0 and not isinstance(kappa_i, (int, float)):
+            if not isinstance(kappa_i, (int, float)):
                 raise ValueError(f"kappa{i+1} must be a number, but got {type(kappa_i)}")
 
             if i == 0:
@@ -146,14 +146,14 @@ class KalmanModel:
                 if kappa_i == 0:
                     raise ValueError(f"kappa for factor {i+1} cannot be zero for mean-reverting processes.")
                 Q[i, i] = (sigma_i**2 * (1 - np.exp(-2 * kappa_i * DELTA))) / (2 * kappa_i)
-
+            
             for j in range(i + 1, n_factors):
                 sigma_j = params.get(f'sigma{j+1}', 0)
-                kappa_j = 0 if j == 0 else params.get(f'kappa{j+1}', 0)  # Force kappa1 to be 0
-
+                kappa_j = params.get(f'kappa{j+1}', 0)
+                
                 if not isinstance(sigma_j, (int, float)):
                     raise ValueError(f"sigma{j+1} must be a number, but got {type(sigma_j)}")
-                if j != 0 and not isinstance(kappa_j, (int, float)):
+                if not isinstance(kappa_j, (int, float)):
                     raise ValueError(f"kappa{j+1} must be a number, but got {type(kappa_j)}")
 
                 if kappa_i + kappa_j == 0:
@@ -171,7 +171,7 @@ class KalmanModel:
                     term = (rho_ij * sigma_i * sigma_j * (1 - np.exp(-(kappa_i + kappa_j) * DELTA))) / (kappa_i + kappa_j)
                 Q[i, j] = Q[j, i] = term
 
-            return Q
+        return Q
 
     def compute_ct(self, s_t, maturities):
         """
@@ -204,7 +204,7 @@ class KalmanModel:
         
         return c_t
 
-    def compute_likelihood(self, observations, times, maturities, exclude_first_n=0.00):
+    def compute_likelihood(self, observations, times, maturities, exclude_first_n=0.01):
         """
         Computes the negative log-likelihood of the observations given the model parameters.
 

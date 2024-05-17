@@ -1,6 +1,7 @@
 from scipy.optimize import minimize
 from src.model.kalman import KalmanModel
 from src.utility.parameter import calculate_num_parameters
+import numpy as np
 
 def objective(params, observations, times, maturities, n_factors, seasonal_coeffs):
     param_keys = ['x1_initial', 'mu', 'sigma1', 'lambda1', 'kappa2', 'sigma2', 'lambda2', 'rho12',
@@ -19,12 +20,12 @@ def objective(params, observations, times, maturities, n_factors, seasonal_coeff
     model = KalmanModel(n_factors=n_factors, params=model_params, seasonal_coeffs=seasonal_coeffs)
     return model.compute_likelihood(observations, times, maturities)
 
-def optimize_model(observations, times, maturities, n_factors, initial_guess, seasonal_coeffs):
+def optimize_model(observations, times, maturities, n_factors, initial_guess, seasonal_coeffs, reg_lambda=1e-6):
     initial_result = minimize(
         objective,
         initial_guess,
         args=(observations, times, maturities, n_factors, seasonal_coeffs),
-        method='Nelder-Mead',
+        method='BFGS',
         options={'maxiter': 1}
     )
 
@@ -35,5 +36,17 @@ def optimize_model(observations, times, maturities, n_factors, initial_guess, se
         method='BFGS',
         options={'maxiter': 1}
     )
+
+    # Régulariser la matrice de covariance pour garantir qu'elle est positive semi-définie
+    hessian_inv = final_result.hess_inv
+    if isinstance(hessian_inv, np.ndarray):
+        covariance_matrix = hessian_inv.astype(np.float64)
+    else:
+        covariance_matrix = hessian_inv.todense().astype(np.float64)
     
+    # Ajouter une petite valeur positive à la diagonale
+    covariance_matrix += np.eye(covariance_matrix.shape[0]) * reg_lambda
+    
+    final_result.hess_inv = covariance_matrix
+
     return final_result

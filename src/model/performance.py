@@ -1,8 +1,8 @@
 import numpy as np
 from src.model.kalman import KalmanModel, s_func
 
-def calculate_rmse(predicted, actual):
-    return np.sqrt(np.mean((predicted - actual) ** 2))
+def calculate_rmse(predicted, actual, axis=None):
+    return np.sqrt(np.mean((predicted - actual)**2, axis=axis))
 
 def calculate_future_price(x, s_t, T_minus_t, mu, lambdas, sigmas, kappas, rhos, n_factors, times):
     assert len(lambdas) == n_factors, "Length of lambdas must be equal to n_factors"
@@ -57,12 +57,12 @@ def calculate_future_price(x, s_t, T_minus_t, mu, lambdas, sigmas, kappas, rhos,
     
     return log_F
 
-def calculate_performance(n_factors, optimized_params, param_keys, observations, times, maturities):
+def calculate_performance(n_factors, optimized_params, param_keys, observations, times, maturities, seasonal_coeffs):
     model_params = {key: optimized_params[i] for i, key in enumerate(param_keys)}
     model_params['maturities'] = maturities
     model_params['current_time'] = times
 
-    kf_model = KalmanModel(n_factors=n_factors, params=model_params)
+    kf_model = KalmanModel(n_factors=n_factors, params=model_params, seasonal_coeffs=seasonal_coeffs)
 
     rho_matrix = np.eye(n_factors)
     rho_keys = [f'rho{i+1}{j+1}' for i in range(1, n_factors) for j in range(i+1, n_factors+1)]
@@ -82,7 +82,8 @@ def calculate_performance(n_factors, optimized_params, param_keys, observations,
         actual_prices = []
         for i in range(len(times)):
             t = times[i]
-            s_t = s_func(t)
+            s_t = s_func(t, seasonal_coeffs['coeff_Cos1'], seasonal_coeffs['coeff_Sin1'],
+                         seasonal_coeffs['coeff_Cos2'], seasonal_coeffs['coeff_Sin2'])
             x = np.zeros((n_factors, 1))
             x[0] = model_params['x1_initial']
             predicted_price = calculate_future_price(
@@ -105,3 +106,4 @@ def calculate_performance(n_factors, optimized_params, param_keys, observations,
         rmse_results.append(rmse)
 
     return rmse_results
+

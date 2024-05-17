@@ -85,7 +85,6 @@ def calculate_performance(n_factors, optimized_params, param_keys, observations,
             s_t = s_func(t, seasonal_coeffs['coeff_Cos1'], seasonal_coeffs['coeff_Sin1'],
                          seasonal_coeffs['coeff_Cos2'], seasonal_coeffs['coeff_Sin2'])
             x = np.zeros((n_factors, 1))
-            x[0] = model_params['x1_initial']
             predicted_price = calculate_future_price(
                 x, s_t, maturities[i, maturity_idx], model_params['mu'],
                 [model_params.get(f'lambda{j+1}', 0) for j in range(n_factors)],
@@ -106,4 +105,3 @@ def calculate_performance(n_factors, optimized_params, param_keys, observations,
         rmse_results.append(rmse)
 
     return rmse_results
-

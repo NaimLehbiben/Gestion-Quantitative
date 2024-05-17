@@ -1,7 +1,14 @@
-
 def calculate_num_parameters(n_factors):
-    """Calculate the number of parameters based on the number of factors, including initial state for non-stationary variable."""
-    return int(0.5 * n_factors**2 + 2.5 * n_factors )
+    if n_factors == 1:
+        return 3  # [mu, sigma1, lambda1]
+    elif n_factors == 2:
+        return 7  # [mu, sigma1, lambda1, kappa2, sigma2, lambda2, rho12]
+    elif n_factors == 3:
+        return 12  # [mu, sigma1, lambda1, kappa2, sigma2, lambda2, rho12, kappa3, sigma3, lambda3, rho13, rho23]
+    elif n_factors == 4:
+        return 18  # [mu, sigma1, lambda1, kappa2, sigma2, lambda2, rho12, kappa3, sigma3, lambda3, rho13, rho23, kappa4, sigma4, lambda4, rho14, rho24, rho34]
+    else:
+        raise ValueError("Unsupported number of factors")
 
 ## Constant
 
@@ -20,8 +27,8 @@ x1 = 4.8738
 sigma_e = 0.0171
 
 initial_guesses = {
-    1: [x1, mu, sigma1, lambdaz],
-    2: [x1, mu, sigma1, lambdaz, kappa, sigma2, lambdaz, rho],
-    3: [x1, mu, sigma1, lambdaz, kappa, sigma2, lambdaz, rho, kappa, sigma2, lambdaz, rho, rho],
-    4: [x1, mu, sigma1, lambdaz, kappa, sigma2, lambdaz, rho, kappa, sigma2, lambdaz, rho, rho, kappa, sigma2, lambdaz, rho, rho, rho]
+    1: [mu, sigma1, lambdaz],
+    2: [mu, sigma1, lambdaz, kappa, sigma2, lambdaz, rho],
+    3: [mu, sigma1, lambdaz, kappa, sigma2, lambdaz, rho, kappa, sigma2, lambdaz, rho, rho],
+    4: [mu, sigma1, lambdaz, kappa, sigma2, lambdaz, rho, kappa, sigma2, lambdaz, rho, rho, kappa, sigma2, lambdaz, rho, rho, rho]
 }

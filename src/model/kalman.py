@@ -36,6 +36,7 @@ class KalmanModel:
         self.seasonal_coeffs = seasonal_coeffs
         self.configure_matrices()
 
+
     def configure_matrices(self):
         """
         Configure the matrices for the Kalman Filter.

@@ -4,11 +4,13 @@ from src.utility.parameter import calculate_num_parameters
 import numpy as np
 
 def objective(params, observations, times, maturities, n_factors, seasonal_coeffs):
-    param_keys = ['x1_initial', 'mu', 'sigma1', 'lambda1', 'kappa2', 'sigma2', 'lambda2', 'rho12',
+    param_keys = ['mu', 'sigma1', 'lambda1', 'kappa2', 'sigma2', 'lambda2', 'rho12',
                   'kappa3', 'sigma3', 'lambda3', 'rho13', 'rho23',
                   'kappa4', 'sigma4', 'lambda4', 'rho14', 'rho24', 'rho34']
-    num_params = calculate_num_parameters(n_factors) + 1
-    model_params = {key: params[i] for i, key in enumerate(param_keys[:num_params])}
+    num_params = calculate_num_parameters(n_factors)
+    param_keys = param_keys[:num_params]
+
+    model_params = {key: params[i] for i, key in enumerate(param_keys)}
     model_params['maturities'] = maturities
     model_params['current_time'] = times
     model_params['seasonal_coeffs'] = seasonal_coeffs
@@ -25,7 +27,7 @@ def optimize_model(observations, times, maturities, n_factors, initial_guess, se
         objective,
         initial_guess,
         args=(observations, times, maturities, n_factors, seasonal_coeffs),
-        method='BFGS',
+        method='Nelder-Mead',
         options={'maxiter': 1}
     )
 
@@ -37,14 +39,12 @@ def optimize_model(observations, times, maturities, n_factors, initial_guess, se
         options={'maxiter': 1}
     )
 
-    # Régulariser la matrice de covariance pour garantir qu'elle est positive semi-définie
     hessian_inv = final_result.hess_inv
     if isinstance(hessian_inv, np.ndarray):
         covariance_matrix = hessian_inv.astype(np.float64)
     else:
         covariance_matrix = hessian_inv.todense().astype(np.float64)
     
-    # Ajouter une petite valeur positive à la diagonale
     covariance_matrix += np.eye(covariance_matrix.shape[0]) * reg_lambda
     
     final_result.hess_inv = covariance_matrix

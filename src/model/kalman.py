@@ -2,31 +2,38 @@ import numpy as np
 from filterpy.kalman import KalmanFilter
 from src.utility.parameter import DELTA
 
-def s_func(t):
+def s_func(t, coeff_Cos1, coeff_Sin1, coeff_Cos2, coeff_Sin2):
     """
     Seasonal function to model periodic effects in the data.
 
     Parameters:
     t (float): Time parameter.
+    const (float): Intercept term.
+    coeff_Cos1 (float): Coefficient for the first cosine component.
+    coeff_Sin1 (float): Coefficient for the first sine component.
+    coeff_Cos2 (float): Coefficient for the second cosine component.
+    coeff_Sin2 (float): Coefficient for the second sine component.
 
     Returns:
     float: The computed seasonal component.
     """
-    return -0.0088 * np.cos(2 * np.pi * t) + 0.0035 * np.cos(2 * np.pi * 2 * t) + \
-           0.0344 * np.sin(2 * np.pi * t) - 0.0098 * np.sin(2 * np.pi * 2 * t)
+    return coeff_Cos1 * np.cos(2 * np.pi * t) + coeff_Sin1 * np.sin(2 * np.pi * t) + \
+           coeff_Cos2 * np.cos(2 * np.pi * 2 * t) + coeff_Sin2 * np.sin(2 * np.pi * 2 * t)
 
 class KalmanModel:
-    def __init__(self, n_factors, params):
+    def __init__(self, n_factors, params, seasonal_coeffs):
         """
-        Initialize the KalmanModel with the given number of factors and parameters.
+        Initialize the KalmanModel with the given number of factors, parameters, and seasonal coefficients.
 
         Parameters:
         n_factors (int): Number of factors in the model.
         params (dict): Dictionary containing the model parameters.
+        seasonal_coeffs (dict): Dictionary containing the seasonal coefficients.
         """
         self.kf = KalmanFilter(dim_x=n_factors, dim_z=5)
         self.n_factors = n_factors
         self.params = params
+        self.seasonal_coeffs = seasonal_coeffs
         self.configure_matrices()
 
     def configure_matrices(self):
@@ -39,10 +46,9 @@ class KalmanModel:
         self.kf.x = np.zeros((self.n_factors, 1))
 
         self.kf.P = np.eye(self.n_factors)
-        self.kf.P[0, 0] = 1e4  # Large value for the non-stationary variable
-        for i in range(1, self.n_factors):
-            self.kf.P[i, i] = 1.0  # Value for the stationary variables
-
+        #self.kf.P[0, 0] = 1e4  # Large value for the non-stationary variable
+        #for i in range(1, self.n_factors):
+            #self.kf.P[i, i] = 1.0  # Value for the stationary variables
         self.kf.Q = self.get_process_noise_covariance()
         self.kf.R = np.eye(5) * 0.01
 
@@ -228,7 +234,9 @@ class KalmanModel:
 
         for i in range(start_index, len(observations)):
             t = times[i]
-            s_t = s_func(t)
+            s_t = s_func(t, self.seasonal_coeffs['coeff_Cos1'],
+                         self.seasonal_coeffs['coeff_Sin1'], self.seasonal_coeffs['coeff_Cos2'],
+                         self.seasonal_coeffs['coeff_Sin2'])
             c_t = self.compute_ct(s_t, maturities[i])
             z = observations[i].reshape(-1, 1)
             self.kf.predict(u=np.array([self.a]))

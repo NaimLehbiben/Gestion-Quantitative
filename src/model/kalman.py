@@ -204,7 +204,7 @@ class KalmanModel:
         
         return c_t
 
-    def compute_likelihood(self, observations, times, maturities, exclude_first_n=0.00):
+    def compute_likelihood(self, observations, times, maturities, exclude_first_n=0.01):
         """
         Computes the negative log-likelihood of the observations given the model parameters.
 

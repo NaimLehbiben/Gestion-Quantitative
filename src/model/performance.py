@@ -86,6 +86,7 @@ def calculate_performance(n_factors, optimized_params, param_keys, observations,
             t = times[i]
             s_t = s_func(t, seasonal_coeffs['coeff_Cos1'], seasonal_coeffs['coeff_Sin1'],
                          seasonal_coeffs['coeff_Cos2'], seasonal_coeffs['coeff_Sin2'])
+            x = np.zeros((n_factors, 1))
             
             # Predict and update step using Kalman Filter
             kf_model.kf.predict()
@@ -116,4 +117,3 @@ def calculate_performance(n_factors, optimized_params, param_keys, observations,
         rmse_results.append(rmse_percent)
 
     return rmse_results
-

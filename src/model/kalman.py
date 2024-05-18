@@ -14,6 +14,7 @@ class KalmanModel:
         self.seasonal_coeffs = seasonal_coeffs
         self.configure_matrices()
 
+
     def configure_matrices(self):
         self.kf.F = self.get_state_transition_matrix()
         self.kf.H = self.get_measurement_matrix()

@@ -29,7 +29,7 @@ def optimize_model(observations, times, maturities, n_factors, initial_guess, se
         initial_guess,
         args=(observations, times, maturities, n_factors, seasonal_coeffs),
         method='Nelder-Mead',
-        options={'maxiter': 1}
+        options={'maxiter': 15}
     )
 
     final_result = minimize(
@@ -37,7 +37,7 @@ def optimize_model(observations, times, maturities, n_factors, initial_guess, se
         initial_result.x,
         args=(observations, times, maturities, n_factors, seasonal_coeffs),
         method='BFGS',
-        options={'maxiter': 2}
+        options={'maxiter': 3}
     )
 
     hessian_inv = final_result.hess_inv

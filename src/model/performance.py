@@ -1,5 +1,7 @@
 import numpy as np
 from src.model.kalman import KalmanModel, s_func
+from src.utility.parameter import calculate_num_parameters
+from tqdm import tqdm
 
 def calculate_rmse(predicted, actual, axis=None):
     return np.sqrt(np.mean((predicted - actual)**2, axis=axis))
@@ -57,7 +59,7 @@ def calculate_future_price(x, s_t, T_minus_t, mu, lambdas, sigmas, kappas, rhos,
     
     return log_F
 
-def calculate_performance(n_factors, optimized_params, param_keys, observations, times, maturities, seasonal_coeffs):
+def calculate_performance(n_factors, optimized_params, param_keys, observations, times, maturities, seasonal_coeffs, silent=True):
     model_params = {key: optimized_params[i] for i, key in enumerate(param_keys)}
     model_params['maturities'] = maturities
     model_params['current_time'] = times
@@ -84,8 +86,13 @@ def calculate_performance(n_factors, optimized_params, param_keys, observations,
             t = times[i]
             s_t = s_func(t, seasonal_coeffs['coeff_Cos1'], seasonal_coeffs['coeff_Sin1'],
                          seasonal_coeffs['coeff_Cos2'], seasonal_coeffs['coeff_Sin2'])
-            x = np.zeros((n_factors, 1))
-            x[0] = model_params['x1_initial']
+            
+            # Predict and update step using Kalman Filter
+            kf_model.kf.predict()
+            kf_model.kf.update(observations[i])
+            x = kf_model.kf.x
+
+            
             predicted_price = calculate_future_price(
                 x, s_t, maturities[i, maturity_idx], model_params['mu'],
                 [model_params.get(f'lambda{j+1}', 0) for j in range(n_factors)],
@@ -100,10 +107,13 @@ def calculate_performance(n_factors, optimized_params, param_keys, observations,
 
         predicted_prices = np.array(predicted_prices).flatten()
         actual_prices = np.array(actual_prices).flatten()
-        
+
+        # Calculer la RMSE en pourcentage
         rmse = calculate_rmse(predicted_prices, actual_prices)
-        print(f"RMSE for {n_factors} factors, Maturity {maturity_idx + 1}: {rmse:.2f}%")
-        rmse_results.append(rmse)
+        rmse_percent = (rmse / np.mean(actual_prices)) * 100
+        if not silent:
+            print(f"RMSE for {n_factors} factors, Maturity {maturity_idx + 1}: {rmse_percent:.2f}%")
+        rmse_results.append(rmse_percent)
 
     return rmse_results
 

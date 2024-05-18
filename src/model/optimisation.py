@@ -2,6 +2,7 @@ from scipy.optimize import minimize
 from src.model.kalman import KalmanModel
 from src.utility.parameter import calculate_num_parameters
 import numpy as np
+import scipy.stats as stats
 
 def objective(params, observations, times, maturities, n_factors, seasonal_coeffs):
     param_keys = ['x1_initial', 'mu', 'sigma1', 'lambda1', 'kappa2', 'sigma2', 'lambda2', 'rho12',
@@ -25,8 +26,8 @@ def optimize_model(observations, times, maturities, n_factors, initial_guess, se
         objective,
         initial_guess,
         args=(observations, times, maturities, n_factors, seasonal_coeffs),
-        method='BFGS',
-        options={'maxiter': 1}
+        method='Nelder-Mead',
+        options={'maxiter': 2}
     )
 
     final_result = minimize(
@@ -34,19 +35,44 @@ def optimize_model(observations, times, maturities, n_factors, initial_guess, se
         initial_result.x,
         args=(observations, times, maturities, n_factors, seasonal_coeffs),
         method='BFGS',
-        options={'maxiter': 1}
+        options={'maxiter': 2}
     )
 
-    # Régulariser la matrice de covariance pour garantir qu'elle est positive semi-définie
+    # Extraire et vérifier la matrice de covariance des paramètres estimés
     hessian_inv = final_result.hess_inv
     if isinstance(hessian_inv, np.ndarray):
-        covariance_matrix = hessian_inv.astype(np.float64)
+        covariance_matrix = hessian_inv
     else:
-        covariance_matrix = hessian_inv.todense().astype(np.float64)
-    
-    # Ajouter une petite valeur positive à la diagonale
+        covariance_matrix = hessian_inv.todense()
+
+
+    # Vérifier les dimensions de la matrice de covariance par rapport au nombre de paramètres estimés
+    num_params = calculate_num_parameters(n_factors) + 1
+    if covariance_matrix.shape[0] != num_params:
+        raise ValueError(f"Unexpected covariance matrix dimensions: {covariance_matrix.shape}. Expected dimensions: ({num_params}, {num_params})")
+
+    # Régulariser la matrice de covariance
     covariance_matrix += np.eye(covariance_matrix.shape[0]) * reg_lambda
-    
-    final_result.hess_inv = covariance_matrix
+
+    # Assurer la positivité semi-définie de la matrice de covariance
+    try:
+        # Utiliser la décomposition de Cholesky pour vérifier la positivité semi-définie
+        np.linalg.cholesky(covariance_matrix)
+    except np.linalg.LinAlgError:
+        # Si la matrice n'est pas positive semi-définie, ajouter une régularisation supplémentaire
+        eigvals = np.linalg.eigvals(covariance_matrix)
+        min_eigval = min(eigvals)
+        if min_eigval < 0:
+            covariance_matrix += np.eye(covariance_matrix.shape[0]) * (-min_eigval + reg_lambda)
+
+    try:
+        np.linalg.cholesky(covariance_matrix)
+        std_errors = np.sqrt(np.diag(covariance_matrix))
+    except np.linalg.LinAlgError:
+        std_errors = np.full(covariance_matrix.shape[0], np.inf)
+
+    z_values = final_result.x / std_errors
+    p_values = [2 * (1 - stats.norm.cdf(np.abs(z))) for z in z_values]
+
 
     return final_result

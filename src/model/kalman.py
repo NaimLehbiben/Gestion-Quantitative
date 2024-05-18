@@ -3,33 +3,11 @@ from filterpy.kalman import KalmanFilter
 from src.utility.parameter import DELTA
 
 def s_func(t, coeff_Cos1, coeff_Sin1, coeff_Cos2, coeff_Sin2):
-    """
-    Seasonal function to model periodic effects in the data.
-
-    Parameters:
-    t (float): Time parameter.
-    const (float): Intercept term.
-    coeff_Cos1 (float): Coefficient for the first cosine component.
-    coeff_Sin1 (float): Coefficient for the first sine component.
-    coeff_Cos2 (float): Coefficient for the second cosine component.
-    coeff_Sin2 (float): Coefficient for the second sine component.
-
-    Returns:
-    float: The computed seasonal component.
-    """
     return coeff_Cos1 * np.cos(2 * np.pi * t) + coeff_Sin1 * np.sin(2 * np.pi * t) + \
            coeff_Cos2 * np.cos(2 * np.pi * 2 * t) + coeff_Sin2 * np.sin(2 * np.pi * 2 * t)
 
 class KalmanModel:
     def __init__(self, n_factors, params, seasonal_coeffs):
-        """
-        Initialize the KalmanModel with the given number of factors, parameters, and seasonal coefficients.
-
-        Parameters:
-        n_factors (int): Number of factors in the model.
-        params (dict): Dictionary containing the model parameters.
-        seasonal_coeffs (dict): Dictionary containing the seasonal coefficients.
-        """
         self.kf = KalmanFilter(dim_x=n_factors, dim_z=5)
         self.n_factors = n_factors
         self.params = params
@@ -37,162 +15,107 @@ class KalmanModel:
         self.configure_matrices()
 
     def configure_matrices(self):
-        """
-        Configure the matrices for the Kalman Filter.
-        """
         self.kf.F = self.get_state_transition_matrix()
         self.kf.H = self.get_measurement_matrix()
         self.a = self.get_state_intercept()
         self.kf.x = np.zeros((self.n_factors, 1))
 
         self.kf.P = np.eye(self.n_factors)
-        self.kf.P[0, 0] = 1e4  # Large value for the non-stationary variable
+        self.kf.P[0, 0] = 1e4  # Grande valeur pour la variable non stationnaire
         for i in range(1, self.n_factors):
-            self.kf.P[i, i] = 1.0  # Value for the stationary variables
+            self.kf.P[i, i] = 1.0  # Valeur pour les variables stationnaires
         self.kf.Q = self.get_process_noise_covariance()
         self.kf.R = np.eye(5) * 0.01
 
     def get_state_transition_matrix(self):
-        """
-        Generates the state transition matrix for the Kalman Filter model.
-
-        Returns:
-        np.ndarray: The state transition matrix.
-        """
         A = np.eye(self.n_factors)
-        
-        if A.shape != (self.n_factors, self.n_factors):
-            raise ValueError(f"A should have shape ({self.n_factors}, {self.n_factors}), but got shape {A.shape}")
-
         A[0, 0] = 1
         for i in range(1, self.n_factors):
             kappa = self.params.get(f'kappa{i+1}', 0)
-
-            if not isinstance(kappa, (int, float)):
-                raise ValueError(f"kappa{i+1} must be a number, but got {type(kappa)}")
-
             A[i, i] = np.exp(-kappa * DELTA)
-
         return A
 
     def get_state_intercept(self):
-        """
-        Generates the state intercept vector for the initial state.
-
-        Returns:
-        np.ndarray: The state intercept vector.
-        """
         mu = self.params.get('mu')
         sigma1 = self.params.get('sigma1')
-
-        if not isinstance(mu, (int, float)):
-            raise ValueError(f"mu must be a number, but got {type(mu)}")
-        if not isinstance(sigma1, (int, float)):
-            raise ValueError(f"sigma1 must be a number, but got {type(sigma1)}")
-
         a = np.zeros((self.n_factors, 1))
         a[0, 0] = mu - 0.5 * sigma1**2
-
-        if a.shape != (self.n_factors, 1):
-            raise ValueError(f"a should have shape ({self.n_factors}, 1), but got shape {a.shape}")
-
         return a
 
     def get_measurement_matrix(self):
-        """
-        Generates the measurement matrix used in the Kalman Filter.
-
-        Returns:
-        np.ndarray: The measurement matrix.
-        """
         T = self.params['maturities']
-        
-        if T.shape[1] != 5:
-            raise ValueError(f"Maturities should have 5 columns, but got shape {T.shape}")
-
         C = np.zeros((5, self.n_factors))
         C[:, 0] = 1
-
         for i in range(1, self.n_factors):
             kappa = self.params.get(f'kappa{i+1}', 0)
-
-            if not isinstance(kappa, (int, float)):
-                raise ValueError(f"kappa{i+1} must be a number, but got {type(kappa)}")
-
             for j in range(5):
                 decay_factors = np.exp(-kappa * T[:, j])
                 C[j, i] = decay_factors[j]
-
         return C
 
     def get_process_noise_covariance(self):
-        """
-        Generates the process noise covariance matrix for the Kalman Filter, with correlation limited to 95%.
-
-        Returns:
-        np.ndarray: Process noise covariance matrix.
-        """
         n_factors = self.n_factors
         params = self.params
 
         Q = np.zeros((n_factors, n_factors))
         
-        for i in range(n_factors):
-            sigma_i = params.get(f'sigma{i+1}', 0)
-            kappa_i = params.get(f'kappa{i+1}', 0)
-            
-            if not isinstance(sigma_i, (int, float)):
-                raise ValueError(f"sigma{i+1} must be a number, but got {type(sigma_i)}")
-            if not isinstance(kappa_i, (int, float)):
-                raise ValueError(f"kappa{i+1} must be a number, but got {type(kappa_i)}")
+        if n_factors == 1:
+            sigma1 = params.get('sigma1', 0)
+            Q[0, 0] = sigma1**2 * DELTA
+        elif n_factors == 2:
+            sigma1 = params.get('sigma1', 0)
+            sigma2 = params.get('sigma2', 0)
+            kappa2 = params.get('kappa2', 0)
+            rho12 = params.get('rho12', 0)
 
-            if i == 0:
-                Q[i, i] = sigma_i**2 * DELTA  
-            else:
-                if kappa_i == 0:
-                    raise ValueError(f"kappa for factor {i+1} cannot be zero for mean-reverting processes.")
-                Q[i, i] = (sigma_i**2 * (1 - np.exp(-2 * kappa_i * DELTA))) / (2 * kappa_i)
-            
-            for j in range(i + 1, n_factors):
-                sigma_j = params.get(f'sigma{j+1}', 0)
-                kappa_j = params.get(f'kappa{j+1}', 0)
-                
-                if not isinstance(sigma_j, (int, float)):
-                    raise ValueError(f"sigma{j+1} must be a number, but got {type(sigma_j)}")
-                if not isinstance(kappa_j, (int, float)):
-                    raise ValueError(f"kappa{j+1} must be a number, but got {type(kappa_j)}")
+            Q[0, 0] = sigma1**2 * DELTA
+            Q[1, 1] = (sigma2**2 * (1 - np.exp(-2 * kappa2 * DELTA))) / (2 * kappa2)
+            Q[0, 1] = Q[1, 0] = (rho12 * sigma1 * sigma2 * (1 - np.exp(-(kappa2 + kappa2) * DELTA))) / (kappa2 + kappa2)
+        elif n_factors == 3:
+            sigma1 = params.get('sigma1', 0)
+            sigma2 = params.get('sigma2', 0)
+            sigma3 = params.get('sigma3', 0)
+            kappa2 = params.get('kappa2', 0)
+            kappa3 = params.get('kappa3', 0)
+            rho12 = params.get('rho12', 0)
+            rho13 = params.get('rho13', 0)
+            rho23 = params.get('rho23', 0)
 
-                if kappa_i + kappa_j == 0:
-                    continue  
+            Q[0, 0] = sigma1**2 * DELTA
+            Q[1, 1] = (sigma2**2 * (1 - np.exp(-2 * kappa2 * DELTA))) / (2 * kappa2)
+            Q[2, 2] = (sigma3**2 * (1 - np.exp(-2 * kappa3 * DELTA))) / (2 * kappa3)
+            Q[0, 1] = Q[1, 0] = (rho12 * sigma1 * sigma2 * (1 - np.exp(-(kappa2 + kappa2) * DELTA))) / (kappa2 + kappa2)
+            Q[0, 2] = Q[2, 0] = (rho13 * sigma1 * sigma3 * (1 - np.exp(-(kappa3 + kappa3) * DELTA))) / (kappa3 + kappa3)
+            Q[1, 2] = Q[2, 1] = (rho23 * sigma2 * sigma3 * (1 - np.exp(-(kappa2 + kappa3) * DELTA))) / (kappa2 + kappa3)
+        elif n_factors == 4:
+            sigma1 = params.get('sigma1', 0)
+            sigma2 = params.get('sigma2', 0)
+            sigma3 = params.get('sigma3', 0)
+            sigma4 = params.get('sigma4', 0)
+            kappa2 = params.get('kappa2', 0)
+            kappa3 = params.get('kappa3', 0)
+            kappa4 = params.get('kappa4', 0)
+            rho12 = params.get('rho12', 0)
+            rho13 = params.get('rho13', 0)
+            rho14 = params.get('rho14', 0)
+            rho23 = params.get('rho23', 0)
+            rho24 = params.get('rho24', 0)
+            rho34 = params.get('rho34', 0)
 
-                rho_ij = params.get(f'rho{i+1}{j+1}', 0)
-
-                if not isinstance(rho_ij, (int, float)):
-                    raise ValueError(f"rho{i+1}{j+1} must be a number, but got {type(rho_ij)}")
-
-                if kappa_i == 0 or kappa_j == 0:
-                    effective_kappa = kappa_j if kappa_i == 0 else kappa_i
-                    term = (rho_ij * sigma_i * sigma_j * (1 - np.exp(-effective_kappa * DELTA))) / effective_kappa
-                else:
-                    term = (rho_ij * sigma_i * sigma_j * (1 - np.exp(-(kappa_i + kappa_j) * DELTA))) / (kappa_i + kappa_j)
-                Q[i, j] = Q[j, i] = term
-
+            Q[0, 0] = sigma1**2 * DELTA
+            Q[1, 1] = (sigma2**2 * (1 - np.exp(-2 * kappa2 * DELTA))) / (2 * kappa2)
+            Q[2, 2] = (sigma3**2 * (1 - np.exp(-2 * kappa3 * DELTA))) / (2 * kappa3)
+            Q[3, 3] = (sigma4**2 * (1 - np.exp(-2 * kappa4 * DELTA))) / (2 * kappa4)
+            Q[0, 1] = Q[1, 0] = (rho12 * sigma1 * sigma2 * (1 - np.exp(-(kappa2 + kappa2) * DELTA))) / (kappa2 + kappa2)
+            Q[0, 2] = Q[2, 0] = (rho13 * sigma1 * sigma3 * (1 - np.exp(-(kappa3 + kappa3) * DELTA))) / (kappa3 + kappa3)
+            Q[0, 3] = Q[3, 0] = (rho14 * sigma1 * sigma4 * (1 - np.exp(-(kappa4 + kappa4) * DELTA))) / (kappa4 + kappa4)
+            Q[1, 2] = Q[2, 1] = (rho23 * sigma2 * sigma3 * (1 - np.exp(-(kappa2 + kappa3) * DELTA))) / (kappa2 + kappa3)
+            Q[1, 3] = Q[3, 1] = (rho24 * sigma2 * sigma4 * (1 - np.exp(-(kappa2 + kappa4) * DELTA))) / (kappa2 + kappa4)
+            Q[2, 3] = Q[3, 2] = (rho34 * sigma3 * sigma4 * (1 - np.exp(-(kappa3 + kappa4) * DELTA))) / (kappa3 + kappa4)
+        
         return Q
 
     def compute_ct(self, s_t, maturities):
-        """
-        Computes the state intercept term c_t based on the seasonal component and maturities.
-
-        Args:
-        s_t (float): The seasonal component at time t.
-        maturities (np.ndarray): Array of maturities for the factors.
-
-        Returns:
-        np.ndarray: The state intercept term c_t with shape (5, 1).
-
-        Raises:
-        ValueError: If the resulting c_t does not have the shape (5, 1).
-        """
         mu = self.params.get('mu', 0)
         sigma1 = self.params.get('sigma1', 0)
 
@@ -200,33 +123,13 @@ class KalmanModel:
         for i in range(len(maturities)):
             factor_index = i % 4 + 1
             lambda_i = self.params.get(f'lambda{factor_index}', 0)
-            #sigma_i = self.params.get(f'sigma{factor_index}', 0)
             term = s_t + (mu + lambda_i - 0.5 * sigma1**2) * maturities[i]
             terms.append(term)
 
         c_t = np.array(terms).reshape(-1, 1)
-
-        if c_t.shape != (5, 1):
-            raise ValueError(f"Each intercept should have shape (5, 1), but got shape {c_t.shape}")
-        
         return c_t
 
     def compute_likelihood(self, observations, times, maturities, exclude_first_n=0.01):
-        """
-        Computes the negative log-likelihood of the observations given the model parameters.
-
-        Args:
-        observations (np.ndarray): The observed data with shape (n_samples, 5).
-        times (np.ndarray): The time points corresponding to the observations.
-        maturities (np.ndarray): The maturities for the factors.
-        exclude_first_n (float, optional): Fraction of the initial observations to exclude from likelihood computation.
-
-        Returns:
-        float: The negative log-likelihood of the observations.
-
-        Raises:
-        ValueError: If observations do not have 5 elements per sample.
-        """
         start_index = int(exclude_first_n * len(observations))
         total_log_likelihood = 0.0
 
